@@ -7,24 +7,23 @@ import {
   Param,
   Delete,
   UseGuards,
-  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
-  ApiQuery,
 } from '@nestjs/swagger';
 import { TrainingService } from '../../application/services/training.service';
 import { CreateTrainingSessionDto } from '../dto/create-training-session.dto';
 import { UpdateTrainingSessionDto } from '../dto/update-training-session.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
-import { Public } from '../../shared/decorators/public.decorator';
+import { TeamAccessGuard } from '../../shared/guards/team-access.guard';
+import { TeamAccess } from '../../shared/decorators/team-access.decorator';
 
 @ApiTags('Training')
 @Controller('training')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TeamAccessGuard)
 @ApiBearerAuth()
 export class TrainingController {
   constructor(private readonly trainingService: TrainingService) {}
@@ -32,19 +31,44 @@ export class TrainingController {
   @Post()
   @ApiOperation({ summary: '새 훈련 세션 생성' })
   @ApiResponse({ status: 201, description: '훈련 세션 생성 성공' })
-  create(@Body() createTrainingSessionDto: CreateTrainingSessionDto) {
-    return this.trainingService.create(createTrainingSessionDto);
+  @TeamAccess('CREATE_SESSION')
+  async create(@Body() createTrainingSessionDto: CreateTrainingSessionDto) {
+    console.log('🔍 TrainingController.create 호출됨');
+    console.log('📝 받은 훈련 세션 데이터:', {
+      sessionName: createTrainingSessionDto.sessionName,
+      scenarioId: createTrainingSessionDto.scenarioId,
+      teamId: createTrainingSessionDto.teamId,
+      startTime: createTrainingSessionDto.startTime,
+      endTime: createTrainingSessionDto.endTime,
+      status: createTrainingSessionDto.status,
+      createdBy: createTrainingSessionDto.createdBy,
+    });
+
+    try {
+      const result = await this.trainingService.create(
+        createTrainingSessionDto,
+      );
+      console.log('✅ TrainingController.create 성공');
+      console.log('🔍 반환된 result:', result);
+      console.log('🔍 result 타입:', typeof result);
+      console.log(
+        '🔍 result 키들:',
+        result ? Object.keys(result) : 'result is null/undefined',
+      );
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('❌ TrainingController.create 실패:', error);
+      return { success: false, error: error.message };
+    }
   }
 
   @Get()
   @ApiOperation({ summary: '모든 훈련 세션 조회' })
   @ApiResponse({ status: 200, description: '훈련 세션 목록 조회 성공' })
-  @ApiQuery({ name: 'teamId', required: false, description: '팀 ID로 필터링' })
-  findAll(@Query('teamId') teamId?: string) {
-    if (teamId) {
-      return this.trainingService.findByTeam(+teamId);
-    }
-    return this.trainingService.findAll();
+  async findAll() {
+    const sessions = await this.trainingService.findAll();
+    console.log('🔍 DB에서 조회된 세션들:', sessions);
+    return { success: true, data: sessions };
   }
 
   @Get(':id')
@@ -69,34 +93,5 @@ export class TrainingController {
   @ApiResponse({ status: 200, description: '훈련 세션 삭제 성공' })
   remove(@Param('id') id: string) {
     return this.trainingService.remove(+id);
-  }
-
-  @Post('join/:sessionCode')
-  @Public() // 세션 코드로 참가할 때는 인증 불필요
-  @ApiOperation({ summary: '훈련 세션 참가' })
-  @ApiResponse({ status: 201, description: '세션 참가 성공' })
-  @ApiResponse({
-    status: 400,
-    description: '이미 참가한 세션이거나 유효하지 않은 세션 코드',
-  })
-  joinSession(
-    @Param('sessionCode') sessionCode: string,
-    @Body('userId') userId: number,
-  ) {
-    return this.trainingService.joinSession(sessionCode, userId);
-  }
-
-  @Get(':id/participants')
-  @ApiOperation({ summary: '세션 참가자 목록 조회' })
-  @ApiResponse({ status: 200, description: '참가자 목록 조회 성공' })
-  getSessionParticipants(@Param('id') id: string) {
-    return this.trainingService.getSessionParticipants(+id);
-  }
-
-  @Get('stats/team/:teamId')
-  @ApiOperation({ summary: '팀별 훈련 통계 조회 (관리자용)' })
-  @ApiResponse({ status: 200, description: '팀 통계 조회 성공' })
-  getTeamStats(@Param('teamId') teamId: string) {
-    return this.trainingService.getTeamStats(+teamId);
   }
 }

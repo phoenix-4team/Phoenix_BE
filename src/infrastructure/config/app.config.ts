@@ -1,12 +1,11 @@
 import { registerAs } from '@nestjs/config';
 
 export default registerAs('app', () => ({
-  name: process.env.APP_NAME || 'Phoenix Training System',
-  version: process.env.APP_VERSION || '1.0.0',
   port: parseInt(process.env.PORT, 10) || 3000,
-  environment: process.env.NODE_ENV || 'development',
+  nodeEnv: process.env.NODE_ENV || 'development',
+  apiPrefix: process.env.API_PREFIX || 'api',
   cors: {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3001',
+    origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000'],
     credentials: true,
   },
   rateLimit: {
@@ -14,13 +13,16 @@ export default registerAs('app', () => ({
     max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 100, // limit each IP to 100 requests per windowMs
   },
   jwt: {
-    secret: process.env.JWT_SECRET || 'your-secret-key',
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+    secret: process.env.JWT_SECRET || 'default-jwt-secret-change-in-production',
+    expiresIn: process.env.JWT_EXPIRES_IN || '24h',
   },
-  swagger: {
-    title: 'Phoenix Training System API',
-    description: '재난 대응 훈련 시스템 API 문서',
-    version: '1.0.0',
-    path: 'api',
+  oauth: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL:
+        process.env.GOOGLE_CALLBACK_URL ||
+        'http://localhost:3000/auth/google/callback',
+    },
   },
 }));

@@ -1,81 +1,93 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../../domain/entities/user.entity';
-import { CreateUserDto } from '../../presentation/dto/create-user.dto';
-import { UpdateUserDto } from '../../presentation/dto/update-user.dto';
+import { UserDomainService } from '../../domain/services/user-domain.service';
+import { CreateUserUseCase } from '../use-cases/user/create-user.use-case';
+import { GetUserUseCase } from '../use-cases/user/get-user.use-case';
+import { UpdateUserUseCase } from '../use-cases/user/update-user.use-case';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
-    private usersRepository: Repository<User>,
+    private readonly userRepository: Repository<User>,
+    private readonly userDomainService: UserDomainService,
+    private readonly createUserUseCase: CreateUserUseCase,
+    private readonly getUserUseCase: GetUserUseCase,
+    private readonly updateUserUseCase: UpdateUserUseCase,
   ) {}
 
-  async create(createUserDto: CreateUserDto): Promise<User> {
-    const user = this.usersRepository.create(createUserDto);
-    return this.usersRepository.save(user);
+  async createUser(data: {
+    loginId: string;
+    password: string;
+    name: string;
+    email: string;
+    teamId?: number;
+    userCode?: string;
+    oauthProvider?: string;
+    oauthProviderId?: string;
+    profileImageUrl?: string;
+  }) {
+    return this.createUserUseCase.execute(data);
   }
 
-  async findAll(): Promise<User[]> {
-    return this.usersRepository.find({
-      select: [
-        'id',
-        'name',
-        'email',
-        'useYn',
-        'userLevel',
-        'userExp',
-        'totalScore',
-        'completedScenarios',
-        'currentTier',
-        'isActive',
-        'createdAt',
-        'updatedAt',
-      ],
-    });
+  async getUser(id: number) {
+    return this.getUserUseCase.execute({ id });
   }
 
-  async findOne(id: number): Promise<User> {
-    const user = await this.usersRepository.findOne({
-      where: { id },
-      select: [
-        'id',
-        'name',
-        'email',
-        'useYn',
-        'userLevel',
-        'userExp',
-        'totalScore',
-        'completedScenarios',
-        'currentTier',
-        'isActive',
-        'createdAt',
-        'updatedAt',
-      ],
-    });
+  async updateUser(
+    id: number,
+    data: {
+      name?: string;
+      email?: string;
+      profileImageUrl?: string;
+      password?: string;
+    },
+  ) {
+    return this.updateUserUseCase.execute({ id, ...data });
+  }
 
+  async getAllUsers() {
+    return this.userRepository.find();
+  }
+
+  async deleteUser(id: number) {
+    const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
-      throw new NotFoundException(
-        `ID ${id}에 해당하는 사용자를 찾을 수 없습니다.`,
-      );
+      throw new Error('User not found');
     }
-
-    return user;
+    await this.userRepository.delete(id);
   }
 
-  async findByEmail(email: string): Promise<User> {
-    return this.usersRepository.findOne({ where: { email } });
+  // AuthService에서 필요한 메서드들
+  async create(data: any) {
+    console.log('🔍 UsersService.create 호출됨:', { data });
+    const result = await this.createUser(data);
+    console.log('🔍 createUser 결과:', { result });
+    console.log('🔍 반환할 user:', result?.user);
+    return result.user;
   }
 
-  async update(id: number, updateUserDto: UpdateUserDto): Promise<User> {
-    const user = await this.findOne(id);
-    Object.assign(user, updateUserDto);
-    return this.usersRepository.save(user);
+  async update(id: number, data: any) {
+    const result = await this.updateUser(id, data);
+    return result.user;
   }
 
-  async remove(id: number): Promise<void> {
-    const user = await this.findOne(id);
-    await this.usersRepository.remove(user);
+  async findByEmail(email: string) {
+    return this.userRepository.findOne({ where: { email } });
+  }
+
+  async findByLoginId(loginId: string) {
+    return this.userRepository.findOne({ where: { loginId } });
+  }
+
+  async findByOAuthProvider(provider: string, providerId: string) {
+    return this.userRepository.findOne({
+      where: {
+        oauthProvider: provider,
+        oauthProviderId: providerId,
+      },
+    });
   }
 }

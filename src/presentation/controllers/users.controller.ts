@@ -1,50 +1,114 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  HttpStatus,
+  HttpCode,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { UsersService } from '../../application/services/users.service';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
-import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 
-@ApiTags('Users')
+@ApiTags('users')
 @Controller('users')
-@UseGuards(JwtAuthGuard)
-@ApiBearerAuth()
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  @ApiOperation({ summary: '새 사용자 생성' })
-  @ApiResponse({ status: 201, description: '사용자 생성 성공' })
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
-  }
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create a new user' })
+  @ApiResponse({ status: 201, description: 'User created successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  async createUser(@Body() createUserDto: CreateUserDto) {
+    const result = await this.usersService.createUser(createUserDto);
 
-  @Get()
-  @ApiOperation({ summary: '모든 사용자 조회' })
-  @ApiResponse({ status: 200, description: '사용자 목록 조회 성공' })
-  findAll() {
-    return this.usersService.findAll();
+    if (!result.success) {
+      return {
+        success: false,
+        message: result.error,
+      };
+    }
+
+    return {
+      success: true,
+      data: result.user,
+      message: 'User created successfully',
+    };
   }
 
   @Get(':id')
-  @ApiOperation({ summary: '특정 사용자 조회' })
-  @ApiResponse({ status: 200, description: '사용자 조회 성공' })
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOne(+id);
+  @ApiOperation({ summary: 'Get user by ID' })
+  @ApiResponse({ status: 200, description: 'User found' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async getUser(@Param('id') id: string) {
+    const result = await this.usersService.getUser(parseInt(id));
+
+    if (!result.success) {
+      return {
+        success: false,
+        message: result.error,
+      };
+    }
+
+    return {
+      success: true,
+      data: result.user,
+    };
   }
 
-  @Patch(':id')
-  @ApiOperation({ summary: '사용자 정보 수정' })
-  @ApiResponse({ status: 200, description: '사용자 수정 성공' })
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(+id, updateUserDto);
+  @Get()
+  @ApiOperation({ summary: 'Get all users' })
+  @ApiResponse({ status: 200, description: 'Users retrieved successfully' })
+  async getAllUsers() {
+    const users = await this.usersService.getAllUsers();
+    return {
+      success: true,
+      data: users,
+    };
+  }
+
+  @Put(':id')
+  @ApiOperation({ summary: 'Update user' })
+  @ApiResponse({ status: 200, description: 'User updated successfully' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async updateUser(
+    @Param('id') id: string,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
+    const result = await this.usersService.updateUser(
+      parseInt(id),
+      updateUserDto,
+    );
+
+    if (!result.success) {
+      return {
+        success: false,
+        message: result.error,
+      };
+    }
+
+    return {
+      success: true,
+      data: result.user,
+      message: 'User updated successfully',
+    };
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: '사용자 삭제' })
-  @ApiResponse({ status: 200, description: '사용자 삭제 성공' })
-  remove(@Param('id') id: string) {
-    return this.usersService.remove(+id);
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete user' })
+  @ApiResponse({ status: 204, description: 'User deleted successfully' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async deleteUser(@Param('id') id: string) {
+    await this.usersService.deleteUser(parseInt(id));
+    return {
+      success: true,
+      message: 'User deleted successfully',
+    };
   }
 }
-

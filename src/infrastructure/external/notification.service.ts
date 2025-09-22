@@ -2,49 +2,36 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class NotificationService {
-  /**
-   * 푸시 알림 발송
-   */
-  async sendPushNotification(userId: number, title: string, message: string): Promise<boolean> {
-    try {
-      // 실제 푸시 알림 발송 로직 구현
-      console.log(`Sending push notification to user ${userId}: ${title} - ${message}`);
-      
-      // 임시로 성공 반환
-      return true;
-    } catch (error) {
-      console.error('Push notification sending failed:', error);
-      return false;
-    }
+  async sendNotification(
+    userId: number,
+    message: string,
+    type: string = 'info',
+  ): Promise<boolean> {
+    // TODO: 실제 알림 서비스 구현 (FCM, WebSocket 등)
+    console.log(`Notification sent to user ${userId}: ${message} (${type})`);
+    return true;
   }
 
-  /**
-   * 훈련 시작 알림
-   */
-  async notifyTrainingStart(userId: number, scenarioTitle: string): Promise<boolean> {
-    const title = '훈련 시작';
-    const message = `${scenarioTitle} 훈련이 시작되었습니다.`;
-    
-    return this.sendPushNotification(userId, title, message);
+  async sendTrainingReminder(
+    userId: number,
+    trainingName: string,
+    startTime: Date,
+  ): Promise<boolean> {
+    const message = `훈련 "${trainingName}"이 ${startTime.toLocaleString()}에 시작됩니다.`;
+    return this.sendNotification(userId, message, 'reminder');
   }
 
-  /**
-   * 훈련 완료 알림
-   */
-  async notifyTrainingCompletion(userId: number, scenarioTitle: string, score: number): Promise<boolean> {
-    const title = '훈련 완료';
-    const message = `${scenarioTitle} 훈련을 완료했습니다. 점수: ${score}`;
-    
-    return this.sendPushNotification(userId, title, message);
+  async sendTrainingComplete(
+    userId: number,
+    trainingName: string,
+    score: number,
+  ): Promise<boolean> {
+    const message = `훈련 "${trainingName}"을 완료했습니다! 점수: ${score}점`;
+    return this.sendNotification(userId, message, 'success');
   }
 
-  /**
-   * 레벨업 알림
-   */
-  async notifyLevelUp(userId: number, newLevel: number): Promise<boolean> {
-    const title = '레벨업!';
-    const message = `축하합니다! 레벨 ${newLevel}에 도달했습니다.`;
-    
-    return this.sendPushNotification(userId, title, message);
+  async sendLevelUp(userId: number, newLevel: number): Promise<boolean> {
+    const message = `축하합니다! 레벨 ${newLevel}에 도달했습니다!`;
+    return this.sendNotification(userId, message, 'achievement');
   }
 }
